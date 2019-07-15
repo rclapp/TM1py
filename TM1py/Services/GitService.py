@@ -2,7 +2,7 @@
 
 import json
 from TM1py.Exceptions import TM1pyException
-from TM1py.Services import ObjectService
+from TM1py.Services.ObjectService import ObjectService
 
 
 class GitService(ObjectService):
@@ -18,7 +18,7 @@ class GitService(ObjectService):
         request = "/api/v1/GitInit"
         response = self._rest.POST(
             request=request,
-            data=json.dumps(**kwargs, ensure_ascii=False))
+            data=json.dumps(kwargs, ensure_ascii=False))
         return response
 
     def git_uninit(self):
