@@ -15,3 +15,4 @@ from TM1py.Services.MonitoringService import MonitoringService
 from TM1py.Services.SecurityService import SecurityService
 from TM1py.Services.ViewService import ViewService
 from TM1py.Services.TM1Service import TM1Service
+from TM1py.Services.GitService import GitService
