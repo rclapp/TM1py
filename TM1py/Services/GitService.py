@@ -21,4 +21,23 @@ class GitService(ObjectService):
             data=json.dumps(**kwargs, ensure_ascii=False))
         return response
 
+    def git_uninit(self):
+        pass
+
+
+    def git_pull(self):
+        pass
+
+    def git_execute_plan(self):
+        pass
+
+    def git_push(self):
+        pass
+
+    def git_push_plan(self):
+        pass
+
+    def git_deploy(self):
+        pass
+
 
