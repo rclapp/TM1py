@@ -40,4 +40,5 @@ class GitService(ObjectService):
     def git_deploy(self):
         pass
 
-
+    def git_status(self):
+        pass
