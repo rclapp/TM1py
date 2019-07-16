@@ -25,6 +25,9 @@ class Git(TM1Object):
         self._deployment = deployment
         self._deployed_commit = GitCommit(deployed_commit["ID"], deployed_commit["Summary"],deployed_commit["Author"])
         self._remote = GitRemote(remote["Connected"], remote["Branches"], remote["Tags"])
+        self._text = "URL: {}  Deployment: {} Deployed Commit ID: {}".format(self._url,
+                                                                             self._deployment,
+                                                                             self._deployed_commit.id)
 
     @property
     def url(self):
@@ -41,3 +44,11 @@ class Git(TM1Object):
     @property
     def remote(self):
         return self._remote
+
+    @property
+    def text(self):
+        return self._text
+
+    def __str__(self):
+        return self.text
+

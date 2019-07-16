@@ -63,8 +63,15 @@ class GitService(ObjectService):
         request = "/api/v1/GitPush"
         payload = json.dumps(kwargs)
         response = self._rest.POST(request=request, data=payload)
-        return response
 
+        source_files = response.json()['SourceFiles']
+        id = response.json()['ID']
+        branch = response.json()['Branch']
+        new_branch = response.json()['NewBranch']
+        new_commit = response.json()['NewCommit']
+        parent_commit = response.json()['ParentCommit']
+
+        return id
 
     def git_execute_plan(self, git_plan_id):
         request = "/api/v1/GitPlans('{}')/tm1.Execute".format(git_plan_id)
