@@ -18,3 +18,9 @@ from TM1py.Objects.Server import Server
 from TM1py.Objects.Subset import Subset, AnonymousSubset
 from TM1py.Objects.User import User
 from TM1py.Objects.View import View
+from TM1py.Objects.Git import Git
+from TM1py.Objects.GitCommit import GitCommit
+from TM1py.Objects.GitRemote import GitRemote
+from TM1py.Objects.GitPlan import GitPullPlan
+from TM1py.Objects.GitPlan import GitPushPlan
+from TM1py.Objects.GitPlan import GitPlan
