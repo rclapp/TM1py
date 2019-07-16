@@ -3,7 +3,7 @@
 import collections
 import json
 
-from TM1py.Objects import TM1Object
+from TM1py.Objects.TM1Object import TM1Object
 
 
 class GitRemote(TM1Object):

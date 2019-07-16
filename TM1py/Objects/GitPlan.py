@@ -1,4 +1,4 @@
-from TM1py.Objects import TM1Object
+from TM1py.Objects.TM1Object import TM1Object
 
 
 class GitPlan(TM1Object):

@@ -5,7 +5,7 @@ import json
 
 from TM1py.Objects.GitCommit import GitCommit
 from TM1py.Objects.GitRemote import GitRemote
-from TM1py.Objects import TM1Object
+from TM1py.Objects.TM1Object import TM1Object
 
 
 class Git(TM1Object):
