@@ -23,8 +23,8 @@ class Git(TM1Object):
 
         self._url = url
         self._deployment = deployment
-        self._deployed_commit = deployed_commit
-        self._remove = remote
+        self._deployed_commit = GitCommit(deployed_commit["ID"], deployed_commit["Summary"],deployed_commit["Author"])
+        self._remote = GitRemote(remote["Connected"], remote["Branches"], remote["Tags"])
 
     @property
     def url(self):

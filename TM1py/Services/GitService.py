@@ -3,7 +3,10 @@
 import json
 from TM1py.Exceptions import TM1pyException
 from TM1py.Services.ObjectService import ObjectService
-
+from TM1py.Objects.Git import Git
+from TM1py.Objects.GitPlan import GitPlan, GitPushPlan, GitPullPlan
+from TM1py.Objects.GitRemote import GitRemote
+from TM1py.Objects.GitCommit import GitCommit
 
 class GitService(ObjectService):
     """ Service to handle Object Updates for Git Integration
@@ -20,7 +23,13 @@ class GitService(ObjectService):
         response = self._rest.POST(
             request=request,
             data=payload)
-        return response
+
+        git = Git(response.json()["URL"],
+                  response.json()["Deployment"],
+                  response.json()["DeployedCommit"],
+                  response.json()["Remote"])
+        return git
+
 
     def git_uninit(self, force=False):
         request = "/api/v1/GitUninit"
@@ -30,11 +39,13 @@ class GitService(ObjectService):
             data=payload)
         return response
 
+
     def git_status(self, username, password):
         request = "/api/v1/GitStatus"
         payload = json.dumps({"Username":username, "Password":password})
         response = self._rest.POST(request=request, data=payload)
         return response
+
 
     def git_pull(self, branch, execute_mode, username, password, force=False):
         request = "/api/v1/GitPull"
