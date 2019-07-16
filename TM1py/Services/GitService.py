@@ -48,17 +48,9 @@ class GitService(ObjectService):
         return response
 
 
-    def git_push(self, branch, username, password, new_branch, message, author, email, force=False):
+    def git_push(self, **kwargs):
         request = "/api/v1/GitPush"
-        payload = json.dumps({
-            "Branch": branch,
-            "NewBranch": new_branch,
-            "Message": message,
-            "Author": author,
-            "Email": email,
-            "Username": username,
-            "Password": password,
-            "Force": force})
+        payload = json.dumps(kwargs)
         response = self._rest.POST(request=request, data=payload)
         return response
 
