@@ -68,7 +68,7 @@ class GitService(ObjectService):
             "Force": force})
         response = self._rest.POST(request=request, data=payload)
 
-        id = response.json()['id']
+        id = response.json()['ID']
         branch = response.json()['Branch']
         force = response.json()['Force']
 
@@ -83,12 +83,12 @@ class GitService(ObjectService):
 
         return pull_plan
 
-    def git_push(self, **kwargs, execute=False):
+    def git_push(self, execute=False, **kwargs):
         request = "/api/v1/GitPush"
         payload = json.dumps(kwargs)
         response = self._rest.POST(request=request, data=payload)
 
-        id = response.json()['id']
+        id = response.json()['ID']
         branch = response.json()['Branch']
         force = response.json()['Force']
 
@@ -100,7 +100,7 @@ class GitService(ObjectService):
         push_plan = GitPushPlan(id, branch, force, new_branch, new_commit, parent_commit, source_files)
 
         if execute:
-            GitService.git_execute_plan(id)
+            GitService.git_execute_plan(push_plan.id)
 
         return push_plan
 
