@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import json
-from TM1py.Exceptions import TM1pyException
 from TM1py.Services.ObjectService import ObjectService
 from TM1py.Objects.Git import Git
-from TM1py.Objects.GitPlan import GitPlan, GitPushPlan, GitPullPlan
-from TM1py.Objects.GitRemote import GitRemote
-from TM1py.Objects.GitCommit import GitCommit
+from TM1py.Objects.GitPlan import GitPushPlan
+from TM1py.Objects.GitPlan import GitPullPlan
 
 class GitService(ObjectService):
     """ Service to handle Object Updates for Git Integration
@@ -17,6 +15,10 @@ class GitService(ObjectService):
         super().__init__(rest)
 
     def git_init(self, **kwargs):
+        '''
+        :param kwargs:
+        :return: tm1 git object
+        '''
 
         request = "/api/v1/GitInit"
         payload = json.dumps(kwargs, ensure_ascii=False)
@@ -28,6 +30,7 @@ class GitService(ObjectService):
                   response.json()["Deployment"],
                   response.json()["DeployedCommit"],
                   response.json()["Remote"])
+
         return git
 
 
@@ -46,8 +49,16 @@ class GitService(ObjectService):
         response = self._rest.POST(request=request, data=payload)
         return response
 
+    def git_pull(self, branch, execute_mode, username, password, force=False, execute = False):
+        '''
+        :param branch:
+        :param execute_mode:
+        :param username:
+        :param password:
+        :param force:
+        :return: git pull plan object
+        '''
 
-    def git_pull(self, branch, execute_mode, username, password, force=False):
         request = "/api/v1/GitPull"
         payload = json.dumps({
             "Branch": branch,
@@ -56,27 +67,49 @@ class GitService(ObjectService):
             "Password": password,
             "Force": force})
         response = self._rest.POST(request=request, data=payload)
-        return response
 
+        id = response.json()['id']
+        branch = response.json()['Branch']
+        force = response.json()['Force']
 
-    def git_push(self, **kwargs):
+        commit = response.json()['Commit']
+        operations = response.json()['Operations']
+        execute_mode = response.json()['ExecuteMode']
+
+        pull_plan = GitPullPlan(id, branch, force, commit, operations, execute_mode)
+
+        if execute:
+            GitService.git_execute_plan(id)
+
+        return pull_plan
+
+    def git_push(self, **kwargs, execute=False):
         request = "/api/v1/GitPush"
         payload = json.dumps(kwargs)
         response = self._rest.POST(request=request, data=payload)
 
-        source_files = response.json()['SourceFiles']
-        id = response.json()['ID']
+        id = response.json()['id']
         branch = response.json()['Branch']
+        force = response.json()['Force']
+
+        source_files = response.json()['SourceFiles']
         new_branch = response.json()['NewBranch']
         new_commit = response.json()['NewCommit']
         parent_commit = response.json()['ParentCommit']
 
-        return id
+        push_plan = GitPushPlan(id, branch, force, new_branch, new_commit, parent_commit, source_files)
+
+        if execute:
+            GitService.git_execute_plan(id)
+
+        return push_plan
+
 
     def git_execute_plan(self, git_plan_id):
         request = "/api/v1/GitPlans('{}')/tm1.Execute".format(git_plan_id)
         response = self._rest.POST(request=request)
         return response
+
 
     def git_deploy(self, url, deployment, branch, username, password, force=False):
         request = "/api/v1/GitPush"
@@ -86,7 +119,9 @@ class GitService(ObjectService):
             "Username": username,
             "Password": password,
             "Force": force})
+
         response = self._rest.POST(request=request, data=payload)
+
         return response
 
 

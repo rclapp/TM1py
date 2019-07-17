@@ -23,4 +23,4 @@ from TM1py.Objects.GitCommit import GitCommit
 from TM1py.Objects.GitRemote import GitRemote
 from TM1py.Objects.GitPlan import GitPullPlan
 from TM1py.Objects.GitPlan import GitPushPlan
-from TM1py.Objects.GitPlan import GitPlan
+from TM1py.Objects.TM1Project import TM1Project

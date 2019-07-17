@@ -6,7 +6,7 @@ class GitPlan(TM1Object):
 
     """
 
-    def __init__(self, id, branch, force):
+    def __init__(self, id, branch='', force=False):
         self._id = id
         self._branch = branch
         self._force = force
@@ -24,7 +24,8 @@ class GitPlan(TM1Object):
         return self._force
 
 
-class GitPullPlan(TM1Object):
+
+class GitPullPlan(GitPlan):
     """ Abstraction of TM1 Git Remote Object
 
     """
@@ -32,7 +33,9 @@ class GitPullPlan(TM1Object):
     SINGLE_COMMIT = 'SingleCommit'
     MULTIPLE_COMMIT = 'MultipleCommit'
 
-    def __init__(self, commit, operations, execution_mode):
+    def __init__(self, id, branch, force, commit, operations, execution_mode):
+
+        GitPlan.__init__(self, id, branch, force)
 
         self._commit = commit
         self._operations = operations
@@ -52,16 +55,20 @@ class GitPullPlan(TM1Object):
         return self._execution_mode
 
 
-class GitPushPlan(TM1Object):
+class GitPushPlan(GitPlan):
     """ Abstraction of TM1 Git Remote Object
 
     """
 
-    def __init__(self, new_branch, new_commit, parent_commit, source_files):
+    def __init__(self, id, branch, force, new_branch, new_commit, parent_commit, source_files):
+
+        GitPlan.__init__(self, id, branch, force)
+
         self._new_branch = new_branch
         self._new_commit = new_commit
         self._parent_commit = parent_commit
         self._source_files = source_files
+
 
     @property
     def new_branch(self):
@@ -78,6 +85,11 @@ class GitPushPlan(TM1Object):
     @property
     def source_files(self):
         return self._source_files
+
+
+
+
+
 
 
 
