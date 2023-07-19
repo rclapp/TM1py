@@ -538,16 +538,12 @@ class RestService:
                                             json=payload)
                     self.verify_response(response)
                     if 'TM1SessionId' not in self._s.cookies:
-                        warnings.warn(
-                            f"TM1SessionId has failed to be automatically added to the session cookies, future requests "
-                            "using this TM1Service instance will fail due to authentication. "
-                            "Check the tm1-gateway domain settings are correct "
-                            "in the container orchestrator ")
-
+                        warnings.warn("TM1SessionId has failed to be automatically added to the session cookies, future requests ")
+                        warnings.warn("Check the tm1-gateway domain settings are correct in the container orchestrator ")
+                          
                         #if session had incorrect domain due to CP4D extract it and add it to cookie jar
                         self._s.cookies.set("TM1SessionId",
                                             self._extract_tm1_session_id_from_set_cookie_header(auth_response_headers=response.headers))
-
                 else:
                     response = self._s.get(url=self._auth_url,
                                            headers=self._headers,
