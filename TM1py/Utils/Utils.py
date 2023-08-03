@@ -11,12 +11,11 @@ from contextlib import suppress
 from enum import Enum, unique
 from io import StringIO
 from typing import Any, Dict, List, Tuple, Iterable, Optional, Generator, Union, Callable
-
 import requests
 from mdxpy import MdxBuilder, Member
 from requests.adapters import HTTPAdapter
 
-from TM1py.Exceptions.Exceptions import TM1pyVersionException, TM1pyNotAdminException
+from TM1py.Exceptions.Exceptions import TM1pyVersionException, TM1pyNotAdminException, TM1pyVersionDeprecationException
 
 try:
     import pandas as pd
@@ -63,6 +62,22 @@ def require_version(version):
 
     return wrap
 
+@decohints
+def deprecated_in_version(version):
+    """ Higher order function to check required version for TM1py function
+    """
+
+    def wrap(func):
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if verify_version(required_version=version, version=self.version):
+                raise TM1pyVersionDeprecationException(func.__name__, version)
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return wrap
+
 
 @decohints
 def require_pandas(func):
@@ -75,6 +90,7 @@ def require_pandas(func):
             raise ImportError(f"Function '{func.__name__}' requires pandas")
 
     return wrapper
+
 
 
 def get_all_servers_from_adminhost(adminhost='localhost', port=None, use_ssl=False) -> List:
@@ -126,7 +142,7 @@ def create_server_on_adminhost(adminhost: str = 'localhost', server_as_dict: Dic
     if not adminhost:
         adminhost = 'localhost'
 
-    url = f"http://{adminhost}:5895/api/v1/Servers"
+    url = f"http://{adminhost}:5895/Servers"
     response = requests.post(url, data=json.dumps(server_as_dict), headers={'Content-Type': 'application/json'})
     response.raise_for_status()
 
@@ -140,7 +156,7 @@ def delete_server_on_adminhost(adminhost: str = None, server_name: str = None):
     if not adminhost:
         adminhost = 'localhost'
 
-    url = f"http://{adminhost}:5895/api/v1/Servers('{server_name}')"
+    url = f"http://{adminhost}:5895/Servers('{server_name}')"
     response = requests.delete(url, headers={'Content-Type': 'application/json'})
     response.raise_for_status()
 
@@ -170,7 +186,7 @@ def update_server_on_adminhost(adminhost: str = 'localhost', server_as_dict: Dic
     if not adminhost:
         adminhost = 'localhost'
 
-    url = f"http://{adminhost}:5895/api/v1/Servers"
+    url = f"http://{adminhost}:5895/Servers"
     response = requests.patch(url, body=json.dumps(server_as_dict), headers={'Content-Type': 'application/json'})
     response.raise_for_status()
 
@@ -206,7 +222,7 @@ def abbreviate_mdx(mdx: str, size=100) -> str:
 
 
 def integerize_version(version: str, precision: int = 4) -> int:
-    return int(version[:precision].replace(".", ""))
+    return int(version[:precision].replace(".", "").ljust(precision, "0"))
 
 
 def verify_version(required_version: str, version: str) -> bool:
@@ -859,6 +875,10 @@ def extract_compact_json_cellset(context: str, response: Dict, return_as_dict: b
 
     if len(props) == 1:
         return [value[0] for value in cells_data]
+
+    if props == ['Ordinal', 'Value']:
+        return [value[1] for value in cells_data]
+
 
     return cells_data
 
