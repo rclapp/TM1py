@@ -4074,6 +4074,58 @@ class TestCellService(unittest.TestCase):
 
         self.tm1._tm1_rest.set_version()
 
+    @skip_if_insufficient_version(version="11.7")
+    def test_clear_with_dataframe_happy_case(self):
+        cells = {("Element17", "Element21", "Element15"): 1}
+        self.tm1.cells.write_values(self.cube_name, cells)
+
+        data = {
+            self.dimension_names[0]: ["Element17"],
+            self.dimension_names[1]: ["Element21"],
+            self.dimension_names[2]: ["Element15"],
+        }
+
+        self.tm1.cells.clear_with_dataframe(cube=self.cube_name, df=pd.DataFrame(data))
+
+        mdx = MdxBuilder.from_cube(self.cube_name) \
+            .add_hierarchy_set_to_row_axis(MdxHierarchySet.member(Member.of(self.dimension_names[0], "Element17"))) \
+            .add_hierarchy_set_to_column_axis(MdxHierarchySet.member(Member.of(self.dimension_names[1], "Element21"))) \
+            .where(Member.of(self.dimension_names[2], "Element15")) \
+            .to_mdx()
+
+        value = self.tm1.cells.execute_mdx_values(mdx=mdx)[0]
+        self.assertEqual(value, None)
+
+    @skip_if_insufficient_version(version="11.7")
+    def test_clear_with_dataframe_dimension_mapping(self):
+        cells = {("Element17", "Element21", "Element15"): 1}
+        self.tm1.cells.write_values(self.cube_name, cells)
+
+        data = {
+            self.dimension_names[0]: ["Element17"],
+            self.dimension_names[1]: ["Element21"],
+            self.dimension_names[2]: ["Element15"],
+        }
+
+        self.tm1.cells.clear_with_dataframe(
+            cube=self.cube_name,
+            df=pd.DataFrame(data),
+            dimension_mapping={
+                self.dimension_names[0]: self.dimension_names[0],
+                self.dimension_names[1]: self.dimension_names[1],
+                self.dimension_names[2]: self.dimension_names[2]
+            }
+        )
+
+        mdx = MdxBuilder.from_cube(self.cube_name) \
+            .add_hierarchy_set_to_row_axis(MdxHierarchySet.member(Member.of(self.dimension_names[0], "Element17"))) \
+            .add_hierarchy_set_to_column_axis(MdxHierarchySet.member(Member.of(self.dimension_names[1], "Element21"))) \
+            .where(Member.of(self.dimension_names[2], "Element15")) \
+            .to_mdx()
+
+        value = self.tm1.cells.execute_mdx_values(mdx=mdx)[0]
+        self.assertEqual(value, None)
+
     def test_execute_mdx_with_skip(self):
         mdx = MdxBuilder.from_cube(self.cube_name) \
             .add_hierarchy_set_to_row_axis(MdxHierarchySet.tm1_subset_all(self.dimension_names[0]).head(2)) \
@@ -4221,9 +4273,26 @@ class TestCellService(unittest.TestCase):
     def test_get_value_other_hierarchy_in_attribute_cube(self):
         value = self.tm1.cells.get_value(
             cube_name='}ElementAttributes_' + self.dimension_with_hierarchies_name,
-            element_string=f'Hierarchy2::Cons1,ea2')
+            elements=f'Hierarchy2::Cons1,ea2')
 
         self.assertEqual('ABC', value)
+
+    def test_get_values(self):
+        values = self.tm1.cells.get_values(
+            cube_name=self.cube_name,
+            element_sets=["Element1|Element1|Element1", "Element1|Element2|Element3", "Element2|Element2|Element2"],
+            dimnesions=self.dimension_names,
+            element_separator="|")
+
+        self.assertEqual([1, None, 1], values)
+
+    def test_get_values_other_hierarchy_in_attribute_cube(self):
+        values = self.tm1.cells.get_values(
+            cube_name='}ElementAttributes_' + self.dimension_with_hierarchies_name,
+            element_sets=[f'Hierarchy2¦Cons1,ea2'],
+            hierarchy_element_separator='¦')
+
+        self.assertEqual(['ABC'], values)
 
     def test_trace_cell_calculation_no_depth_iterable(self):
         result = self.tm1.cells.trace_cell_calculation(

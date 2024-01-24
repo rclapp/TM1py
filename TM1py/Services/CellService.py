@@ -14,7 +14,7 @@ from io import StringIO
 from typing import List, Union, Dict, Iterable, Tuple, Optional
 
 import ijson
-from mdxpy import MdxHierarchySet, MdxBuilder, Member
+from mdxpy import MdxHierarchySet, MdxBuilder, Member, MdxTuple
 from requests import Response
 
 from TM1py.Exceptions.Exceptions import TM1pyException, TM1pyWritePartialFailureException, TM1pyWriteFailureException, \
@@ -252,6 +252,51 @@ class CellService(ObjectService):
         # Execute MDX
         cellset = dict(self.execute_mdx(mdx=mdx, sandbox_name=sandbox_name, **kwargs))
         return next(iter(cellset.values()))["Value"]
+
+    def get_values(self, cube_name: str, element_sets: Iterable[Iterable[str]] = None, dimensions: List[str] = None,
+                   sandbox_name: str = None, element_separator: str = ",", hierarchy_separator: str = "&&",
+                   hierarchy_element_separator: str = "::", **kwargs) -> List:
+        """ Returns list of cube values from specified coordinates list.  will be in same order as original list
+
+        :param cube_name: Name of the cube
+        :param element_sets: Set of coordinates where each element is provided in the correct dimension order.
+        [('2024', 'Actual', 'London', 'P02), ('2024', 'Forecast', 'Berlin', 'P03)]
+        :param dimensions: Dimension names in correct order
+        :param sandbox_name: str
+        :param element_separator: Alternative separator for the element selections
+        :param hierarchy_separator: Alternative separator for multiple hierarchies
+        :param hierarchy_element_separator: Alternative separator between hierarchy name and element name
+        :return:
+        """
+
+        if not dimensions:
+            dimensions = self.get_dimension_names_for_writing(cube_name=cube_name)
+
+        q = MdxBuilder.from_cube(cube_name)
+
+        for elements in element_sets:
+            members = []
+            element_selections = elements.split(element_separator)
+            for dimension_name, element_selection in zip(dimensions, element_selections):
+                if hierarchy_separator not in element_selection:
+                    if hierarchy_element_separator in element_selection:
+                        hierarchy_name, element_name = element_selection.split(hierarchy_element_separator)
+                    else:
+                        hierarchy_name = dimension_name
+                        element_name = element_selection
+
+                    member = Member.of(dimension_name, hierarchy_name, element_name)
+                    members.append(member)
+                else:
+                    for element_selection_part in element_selection.split(hierarchy_separator):
+                        hierarchy_name, element_name = element_selection_part.split(hierarchy_element_separator)
+                        member = Member.of(dimension_name, hierarchy_name, element_name)
+                        members.append(member)
+
+            q.add_member_tuple_to_columns(MdxTuple(members))
+
+        # Execute MDX
+        return self.execute_mdx_values(mdx=q.to_mdx(), sandbox_name=sandbox_name, **kwargs)
 
     def _compose_odata_tuple_from_string(self, cube_name: str,
                                          element_string: str,
@@ -565,6 +610,122 @@ class CellService(ObjectService):
         for dimension, expression in dimension_expression_pairs.items():
             hierarchy_set = MdxHierarchySet.from_str(dimension=dimension, hierarchy=dimension, mdx=expression)
             mdx_builder.add_hierarchy_set_to_column_axis(hierarchy_set)
+
+        return self.clear_with_mdx(cube=cube, mdx=mdx_builder.to_mdx(), **kwargs)
+
+    @require_data_admin
+    @require_ops_admin
+    @require_version(version="11.7")
+    def clear_with_dataframe(self, cube: str, df: 'pd.DataFrame', dimension_mapping: Dict = None, **kwargs):
+        """Clears data from a TM1 cube based on the distinct values in a DataFrame over cube dimensions.
+            Note:
+                This function is similar to `tm1.cells.clear`, but it is designed specifically for clearing data
+                 based on distinct values in a DataFrame over cube dimensions. The key difference is that this
+                 function interprets the DataFrame columns as dimensions and supports a mapping (`dimension_mapping`)
+                 for specifying hierarchies within those dimensions.
+
+          :param cube: str
+              The name of the TM1 cube.
+          :param df: pd.DataFrame
+              The DataFrame containing distinct values over cube dimensions.
+              Columns in the DataFrame should correspond to cube dimensions.
+          :param dimension_mapping: Dict, optional
+              A dictionary mapping the DataFrame columns to one or many hierarchies within the given dimension.
+              If not provided, assumes that the dimensions have just one hierarchy.
+
+          :return: None
+              The function clears data in the specified TM1 cube.
+
+          :raises ValueError:
+              If there are unmatched dimensions in the DataFrame or if specified dimensions
+              do not exist in the TM1 cube.
+
+          :example:
+              ```python
+
+              # Sample DataFrame with distinct values over cube dimensions
+              data = {
+                  "Year": ["2021", "2022"],
+                  "Organisation": ["some_company", "some_company"],
+                  "Location": ["Germany", "Albania"]
+              }
+
+              # Sample dimension mapping
+              dimensions_mapping = {
+                  "Organisation": "hierarchy_1",
+                  "Location": ["hierarchy_2", "hierarchy_3", "hierarchy_4"]
+              }
+
+              dataframe = pd.DataFrame(data)
+
+              with TM1Service(**tm1params) as tm1:
+                tm1.cells.clear_with_dataframe(cube="Sales", df=dataframe)
+
+              ```
+        """
+        if not dimension_mapping:
+            dimension_mapping = {}
+
+        if len(CaseAndSpaceInsensitiveSet(df.columns)) != len(df.columns):
+            raise ValueError(f"Column names in DataFrame are not unique identifiers for TM1: {list(df.columns)}")
+
+        cube_service = self.get_cube_service()
+        dimension_names = CaseAndSpaceInsensitiveSet(*cube_service.get_dimension_names(cube_name=cube))
+
+        df = df.astype(str)
+
+        elements_by_column = {col_name: df[col_name].unique() for col_name in df.columns}
+
+        mdx_selections = {}
+        unmatched_dimension_names = []
+        for column, elements in elements_by_column.items():
+            members = []
+
+            if column not in dimension_names:
+                unmatched_dimension_names.append(column)
+
+            for element in elements:
+                if column in dimension_mapping:
+                    hierarchy = dimension_mapping.get(column)
+                    if not isinstance(hierarchy, str):
+                        raise ValueError(f"Value for key '{dimension}' in dimension_mapping must be of type str")
+                    members.append(Member.of(column, hierarchy, element))
+
+                else:
+                    members.append(Member.of(column, column, element))
+            mdx_selections[column] = MdxHierarchySet.members(members)
+
+        if dimension_mapping:
+            for dimension, hierarchies in dimension_mapping.items():
+                if dimension not in dimension_names:
+                    unmatched_dimension_names.append(dimension)
+
+                elif isinstance(hierarchies, str):
+                    hierarchy = hierarchies
+                    mdx_selections[dimension] = MdxHierarchySet.tm1_subset_all(
+                        dimension=dimension,
+                        hierarchy=hierarchy).filter_by_level(0)
+
+                elif isinstance(hierarchies, Iterable):
+                    for hierarchy in hierarchies:
+                        mdx_selections[dimension] = MdxHierarchySet.tm1_subset_all(
+                            dimension=dimension,
+                            hierarchy=hierarchy).filter_by_level(0)
+
+                else:
+                    raise ValueError(f"Unexpected value type for key '{dimension}' in dimension_mapping")
+
+        if unmatched_dimension_names:
+            raise ValueError(f"Dimension(s) {unmatched_dimension_names} does not exist in cube {cube}."
+                             f"\nCheck the source of the dataframe to fix the problem")
+
+        for dimension_name in dimension_names:
+            if dimension_name not in mdx_selections:
+                mdx_selections[dimension_name] = MdxHierarchySet.tm1_subset_all(dimension_name).filter_by_level(0)
+
+        mdx_builder = MdxBuilder.from_cube(cube).columns_non_empty()
+        for dimension, expression in mdx_selections.items():
+            mdx_builder.add_hierarchy_set_to_column_axis(expression)
 
         return self.clear_with_mdx(cube=cube, mdx=mdx_builder.to_mdx(), **kwargs)
 
@@ -2154,7 +2315,8 @@ class CellService(ObjectService):
 
     @require_pandas
     def execute_mdx_dataframe_shaped(self, mdx: str, sandbox_name: str = None, display_attribute: bool = False,
-                                     use_iterative_json: bool = False, use_blob: bool = False, mdx_headers: bool=False,
+                                     use_iterative_json: bool = False, use_blob: bool = False,
+                                     mdx_headers: bool = False,
                                      **kwargs) -> 'pd.DataFrame':
         """ Retrieves data from cube in the shape of the query.
         Dimensions on rows can be stacked. One dimension must be placed on columns. Title selections are ignored.
@@ -3637,7 +3799,7 @@ class CellService(ObjectService):
     @require_pandas
     def extract_cellset_dataframe_shaped(self, cellset_id: str, sandbox_name: str = None,
                                          display_attribute: bool = False, infer_dtype: bool = False,
-                                         mdx_headers: bool=False, **kwargs) -> 'pd.DataFrame':
+                                         mdx_headers: bool = False, **kwargs) -> 'pd.DataFrame':
         """ Retrieves data from cellset in the shape of the query.
         Dimensions on rows can be stacked. One dimension must be placed on columns. Title selections are ignored.
 
