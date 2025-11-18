@@ -4,6 +4,7 @@ from TM1py.Services.ApplicationService import ApplicationService
 from TM1py.Services.CellService import CellService
 from TM1py.Services.ChoreService import ChoreService
 from TM1py.Services.CubeService import CubeService
+from TM1py.Services.DataService.DataService import DataService
 from TM1py.Services.DimensionService import DimensionService
 from TM1py.Services.ElementService import ElementService
 from TM1py.Services.GitService import GitService

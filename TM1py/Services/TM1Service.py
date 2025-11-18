@@ -20,6 +20,7 @@ from TM1py.Services import (
 )
 from TM1py.Services.AuditLogService import AuditLogService
 from TM1py.Services.ConfigurationService import ConfigurationService
+from TM1py.Services.DataService.DataService import DataService
 from TM1py.Services.FileService import FileService
 from TM1py.Services.JobService import JobService
 from TM1py.Services.LoggerService import LoggerService
@@ -93,6 +94,7 @@ class TM1Service:
         self.cells = CellService(self._tm1_rest)
         self.chores = ChoreService(self._tm1_rest)
         self.cubes = CubeService(self._tm1_rest)
+        self.data = DataService(self._tm1_rest)
         self.dimensions = DimensionService(self._tm1_rest)
         self.elements = ElementService(self._tm1_rest)
         self.git = GitService(self._tm1_rest)

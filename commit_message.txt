@@ -1,0 +1,91 @@
+feat: Add DataService with builder pattern for simplified TM1 data operations
+
+This commit introduces a new DataService that provides a fluent, builder-pattern
+interface for TM1 data operations, simplifying the existing CellService API.
+
+## New Features
+
+### Core DataService Infrastructure
+- DataService entry point with tm1.data accessor
+- Mixin-based architecture for code reuse:
+  - SandboxMixin: Sandbox context support
+  - FilterMixin: Cell filtering (skip_zeros, skip_consolidated, skip_rule_derived)
+  - PerformanceMixin: Performance options (use_blob, use_compact_json, use_iterative_json)
+  - PaginationMixin: Result pagination (top, skip)
+  - AsyncMixin: Parallel execution (max_workers, async_axis)
+  - AttributeMixin: Attribute handling
+  - WriteMixin: Write operation options
+
+### Query Executors
+1. QueryExecutor (MDX queries)
+   - Accepts MDX strings or MdxBuilder objects
+   - 8 terminal operations: as_dict(), as_dataframe(), as_csv(), as_values(),
+     as_pivot(), count(), as_raw(), as_cellset_id()
+   - Full mixin support for all options
+
+2. ViewQueryExecutor (Cube views)
+   - Execute native and MDX views
+   - 7 terminal operations: as_dict(), as_dataframe(), as_csv(), as_values(),
+     count(), as_raw(), as_cellset_id()
+   - Support for private views
+
+3. CoordinateQueryExecutor (Direct cell access)
+   - Read single or multiple cell values
+   - 2 terminal operations: as_value(), as_values()
+   - Smart coordinate detection
+
+### Test Infrastructure
+- TM1pyTestCase: Shared base class for test infrastructure
+  - Provides test cubes, dimensions, views, and data
+  - Automatic setup/teardown without inheriting test methods
+  - Enables fast, isolated test execution
+
+### Comprehensive Test Suite
+- DataService_test: 21 tests for entry points
+- DataServiceMixins_test: 67 tests for all mixins
+- QueryExecutor_test: 44 tests for MDX query execution
+- ViewQueryExecutor_test: 42 tests for view query execution
+- CoordinateQueryExecutor_test: 17 tests for coordinate access
+
+Total: 191 tests covering all functionality
+
+### Documentation
+- DESIGN_DATA_SERVICE_BUILDER_PATTERN.md: Architecture and design decisions
+- ASYNC_DESIGN_TRADEOFFS.md: Async implementation analysis
+- IMPLEMENTATION_TASKS.md: Task tracking (Phase 3 complete)
+- USAGE_EXAMPLES.md: Usage examples and migration guide
+- DATASERVICE_VS_CELLSERVICE.md: Comparison and benefits
+- CELLSET_SUPPORT_ANALYSIS.md: Cellset operation analysis
+
+## Usage Examples
+
+MDX query with options:
+  df = tm1.data.mdx(query).skip_zeros().sandbox('dev').as_dataframe()
+
+View query with chaining:
+  result = tm1.data.view('Sales', 'Budget').skip_consolidated().top(100).as_dict()
+
+Direct cell access:
+  value = tm1.data.coordinates('Sales', ('2024', 'Jan', 'Actual')).as_value()
+
+Performance optimization:
+  csv = tm1.data.view('Sales', 'Budget').use_blob().as_csv()
+
+Async execution:
+  df = tm1.data.mdx(query).max_workers(8).as_dataframe()
+
+## Implementation Status
+- Phase 1: Foundation & Infrastructure (6 tasks) - COMPLETE
+- Phase 2: MDX Query Builder (24 tasks) - COMPLETE
+- Phase 3: Additional Read Builders (29 tasks) - COMPLETE
+- Phase 4: Async Read Operations - AsyncMixin implemented
+- Phase 5: Write Operations - pending
+- Phase 6: Documentation & Migration - pending
+
+## Breaking Changes
+None - DataService is additive and fully backward compatible with CellService.
+
+## Testing
+All tests passing. Test infrastructure refactored to use shared TM1pyTestCase
+base class for efficient test execution without duplication.
+
