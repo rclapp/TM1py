@@ -280,16 +280,60 @@ class TestViewQueryExecutor(TM1pyTestCase):
         """Test count() produces same result as CellService.execute_view_cellcount()"""
         # Using executor
         executor_result = ViewQueryExecutor(self.tm1.cells, self.cube_name, self.view_name).count()
-        
+
         # Using CellService directly
         cellservice_result = self.tm1.cells.execute_view_cellcount(
             cube_name=self.cube_name,
             view_name=self.view_name,
             private=False
         )
-        
+
         # Results should be equal
         self.assertEqual(executor_result, cellservice_result)
+
+    def test_as_raw_parity_with_cellservice(self):
+        """Test as_raw() produces same result as CellService.execute_view_raw()"""
+        # Using executor
+        executor_result = ViewQueryExecutor(self.tm1.cells, self.cube_name, self.view_name).as_raw()
+
+        # Using CellService directly (must match executor defaults)
+        cellservice_result = self.tm1.cells.execute_view_raw(
+            cube_name=self.cube_name,
+            view_name=self.view_name,
+            private=False,
+            skip_zeros=False  # Match FilterMixin default
+        )
+
+        # Both should be dictionaries
+        self.assertIsInstance(executor_result, dict)
+        self.assertIsInstance(cellservice_result, dict)
+
+        # Results should be equal
+        self.assertEqual(executor_result, cellservice_result)
+
+    def test_as_cellset_id_parity_with_cellservice(self):
+        """Test as_cellset_id() produces valid cellset ID like CellService.create_cellset_from_view()"""
+        # Using executor
+        executor_cellset_id = ViewQueryExecutor(self.tm1.cells, self.cube_name, self.view_name).as_cellset_id()
+
+        # Using CellService directly
+        cellservice_cellset_id = self.tm1.cells.create_cellset_from_view(
+            cube_name=self.cube_name,
+            view_name=self.view_name,
+            private=False
+        )
+
+        # Both should be strings
+        self.assertIsInstance(executor_cellset_id, str)
+        self.assertIsInstance(cellservice_cellset_id, str)
+
+        # Both should be valid cellset IDs (non-empty strings)
+        self.assertTrue(len(executor_cellset_id) > 0)
+        self.assertTrue(len(cellservice_cellset_id) > 0)
+
+        # Clean up cellsets
+        self.tm1.cells.delete_cellset(executor_cellset_id)
+        self.tm1.cells.delete_cellset(cellservice_cellset_id)
 
     def test_has_max_workers_method(self):
         """Test ViewQueryExecutor has max_workers() method from AsyncMixin"""
